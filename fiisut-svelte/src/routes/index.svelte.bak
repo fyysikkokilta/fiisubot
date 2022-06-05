@@ -1,0 +1,100 @@
+<script context="module" lang="ts">
+	export const prerender = true;
+</script>
+
+<script lang="ts">
+	//import songs from '$lib/songs.json';
+	import songs from '$lib/lauluwiki.json';
+  import InfiniteScroll from "svelte-infinite-scroll";
+	import InfiniteLoading from "svelte-infinite-loading";
+	$: page = 0;
+	const size = 50;
+	let searchTerm = '';
+	$: infiniteId = Symbol();
+
+
+	$: filtSongs = songs.filter((s) => s.lyrics.indexOf(searchTerm) !== -1);
+	$: visibleSongs = songs.splice(0, size-1);
+
+	function resetScroll(){
+		visibleSongs = [];
+		page = 0;
+		infiniteId = Symbol();
+	}
+	function showMore({ detail: { loaded, complete } }){
+		page++;
+		visibleSongs = [...visibleSongs, ...filtSongs.splice(size * page, size*(page+1) - 1)];
+		loaded();
+	}
+
+</script>
+
+<svelte:head>
+	<title>Home</title>
+	<meta name="description" content="Svelte demo app" />
+</svelte:head>
+
+<section>
+	<h1>
+		<div class="welcome">
+			<picture>
+				<source srcset="svelte-welcome.webp" type="image/webp" />
+				<img src="svelte-welcome.png" alt="Welcome" />
+			</picture>
+		</div>
+
+		to your new<br />SvelteKit app
+	</h1>
+
+	<h2>
+		try editing <strong>src/routes/index.svelte</strong>
+	</h2>
+
+	<!-- <Counter /> -->
+	Filter: <input
+		bind:value={searchTerm}
+		on:input={resetScroll}
+	/>
+
+
+	{#each visibleSongs as {name, lyrics}}
+		<h4>{name}</h4>
+		<p class="lyrics">{@html lyrics}</p>
+		<br>
+	{/each}
+  <!-- <InfiniteScroll hasMore={visibleSongs.length} threshold={100} on:loadMore={() => {page++; alert("ata");}} /> -->
+	<InfiniteLoading on:infinite={showMore} identifier={infiniteId}/>
+</section>
+
+<style>
+	section {
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+		flex: 1;
+	}
+
+	.lyrics {
+		white-space: pre-line;
+	}
+
+	h1 {
+		width: 100%;
+	}
+
+	.welcome {
+		position: relative;
+		width: 100%;
+		height: 0;
+		padding: 0 0 calc(100% * 495 / 2048) 0;
+	}
+
+	.welcome img {
+		position: absolute;
+		width: 100%;
+		height: 100%;
+		top: 0;
+		display: block;
+	}
+</style>
