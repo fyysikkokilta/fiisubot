@@ -1,41 +1,16 @@
 <script>
-	import InfiniteLoading from '$lib/InfiniteScroll.svelte';
 	import MyInfiniteScroll from '$lib/MyInfiniteScrollParent.svelte';
 	//import allSongs from '$lib/lauluwiki.json';
 	import _allSongs from '$lib/songs.json';
-	import { intros } from 'svelte/internal';
-
-	const size = 50;
-	let page = 0;
-	let infiniteId = Symbol();
-	let searchTerm = '';
-	const allSongs = _allSongs.map((e, i) => ({ ...e, index: i }));
-	let filtSongs = [...allSongs];
-	let songs = filtSongs.splice(0, size - 1);
-
-	function resetScroll() {
-		filtSongs = allSongs.filter((s) => s.lyrics.toLowerCase().indexOf(searchTerm) !== -1);
-		songs = filtSongs.splice(0, size - 1);
-		page = 1;
-		infiniteId = Symbol();
-	}
-
-	function infiniteHandler({ detail: { loaded, complete } }) {
-		if (songs.length === filtSongs.length) {
-			complete();
-			return;
-		}
-		console.log('Loading more. Currently: ', songs);
-		songs = [...songs, ...filtSongs.splice(size * page, size * (page + 1) - 1)];
-		console.log('Loaded more. Now: ', songs);
-
-		console.log(size * page, size * (page + 1) - 1);
-		if (songs.length === filtSongs.length) complete();
-		else {
-			//page += 1;
-			loaded();
-		}
-	}
+	$: searchTerm = '';
+	$: allSongs = _allSongs.map((e, i) => ({ ...e, index: i }));
+	$: filtSongs = allSongs.filter((s) => s.lyrics.toLowerCase().indexOf(searchTerm) !== -1);
+	//$: console.log(filtSongs)
+	//$: filtSongs = searchTerm == 'ata' ? allSongs : [{index: 10, lyrics: 'ur mama', name: 'jooh'}]
+	//function filterItems() {
+	//	filtSongs = allSongs.filter((s) => s.lyrics.toLowerCase().indexOf(searchTerm) !== -1);
+	//	console.log(filtSongs);
+	//}
 </script>
 
 <div id="app">
@@ -44,7 +19,9 @@
 			<img src="https://fyysikkokilta.fi/favicon.ico" alt="Logo" />
 		</a>
 		<span>Fiisut</span>
-		<input bind:value={searchTerm} on:input={resetScroll} />
+		<input bind:value={searchTerm}
+
+		/>
 		<!-- <select bind:value={newsType} on:change={changeType}>
 			<option value="story">Story</option>
 			<option value="poll">Poll</option>
@@ -54,15 +31,17 @@
 		</select> -->
 	</header>
 
-	<MyInfiniteScroll items={allSongs} let:item let:index>
+	<MyInfiniteScroll items={filtSongs}>
 		<div slot="content">cont div</div>
-		<div slot="item" let:item let:index>
-			<div class="hacker-news-item" data-num={index + 1}>
+		<div slot="item" let:item>
+			{#if item}
+			<div class="hacker-news-item" data-num={item.index + 1}>
 				<p class="song-name">{item.index} {item.name}</p>
 				<p class="song">
 					{@html item.lyrics}
 				</p>
 			</div>
+			{/if}
 		</div>
 	</MyInfiniteScroll>
 	<!-- <InfiniteLoading on:infinite={infiniteHandler} identifier={infiniteId}>

@@ -10,43 +10,48 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	export let setShowMore: (fun: () => any, e: Element) => void;
-	export let items: any[] = [];
+	export let items: any[];
+	$: (items = [...items]);
+	$: console.log(items)
 	export let loadOnNthVisible: number = 10;
-  export let pageSize: number = 50;
+	export let pageSize: number = 50;
 	export let start: number = 0;
-  let observed: Element;
+	let observed: Element;
 	let showNext: boolean = false;
 
-  const showMore = async () => { showNext = true; }
+	const showMore = async () => {
+		showNext = true;
+	};
 	onMount(() => {
-		console.log('showing', start, start+pageSize)
+		console.log('showing', start, start + pageSize);
 		setShowMore(showMore, observed);
 	});
 
-	const isLast = items.length <= start+pageSize;
-	const end = isLast ? items.length : start+pageSize
-	const obsInd = isLast ? items.length : start+pageSize-loadOnNthVisible;
-	const topItems = items.slice(start, obsInd)
-	const botItems = items.slice(obsInd+1, end)
+	$: isLast = items.length <= start + pageSize;
+	$: end = isLast ? items.length : start + pageSize;
+	$: obsInd = isLast ? items.length : start + pageSize - loadOnNthVisible;
+	$: topItems = items.slice(start, obsInd);
+	$: botItems = items.slice(obsInd + 1, end);
 </script>
 
-{#each topItems as item, index}
-	<slot name="item" {item} index={start+index}>ITEM TEMPLATE MISSING</slot>
+{#each topItems as item (item.index)}
+	<slot name="item" {item}>ITEM TEMPLATE MISSING</slot>
 {/each}
 
 {#if !isLast}
-<div bind:this={observed}>
-	<slot name="item" item={items[obsInd]} index={obsInd}>ITEM TEMPLATE MISSING</slot>
-	{#each botItems as item, index}
-		<slot name="item" {item} index={obsInd+1+index}>ITEM TEMPLATE MISSING</slot>
-	{/each}
-
-</div>
+	<div bind:this={observed}>
+		<slot name="item" item={items[obsInd]}>ITEM TEMPLATE MISSING</slot>
+		{#each botItems as item (item.index)}
+			<slot name="item" {item}>ITEM TEMPLATE MISSING</slot>
+		{/each}
+	</div>
 {/if}
 
 {#if showNext && !isLast}
-	<svelte:self items={items} start={start+pageSize} setShowMore={setShowMore}>
+	<svelte:self {items} start={start + pageSize} {setShowMore}>
 		<div slot="content"><slot name="content">no content :( t recursive</slot></div>
-		<div slot="item" let:item let:index><slot name="item" {item} {index}>recursive item ata</slot></div>
+		<div slot="item" let:item>
+			<slot name="item" {item}>recursive item ata</slot>
+		</div>
 	</svelte:self>
 {/if}
