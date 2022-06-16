@@ -1,0 +1,21 @@
+[package]
+name = "fiisut_tg"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+milli = { git = "https://github.com/meilisearch/milli.git", tag = "v0.29.3" }
+anyhow = "*"
+serde_json = "*"
+teloxide = { version = "*", features = ["full"] }
+tokio = "*"
+serde = "*"
+owning_ref = "0.4.1"
+closure="*"
+lazy_static = "*"
+
+[[bin]]
+name = "index-builder"
+path = "src/indexer/main.rs"
