@@ -22,7 +22,7 @@ fn main() -> Result<()> {
     let mut txn = index.write_txn()?;
 
     let reader = DocumentBatchReader::from_reader(Cursor::new(documents_from_json(File::open(
-        path.join("documents.json"),
+        path.join("songs.json"),
     )?)?))?;
 
 

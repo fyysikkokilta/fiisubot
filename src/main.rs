@@ -21,7 +21,7 @@ lazy_static! {
     };
 
     static ref songs: Vec<Song> = {
-        serde_json::from_reader(File::open("documents.json").unwrap()).unwrap()
+        serde_json::from_reader(File::open("songs.json").unwrap()).unwrap()
     };
 }
 
@@ -45,15 +45,21 @@ struct Song {
     lyrics: String,
 }
 
-//static mut songs: Vec<Song> = vec![];
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread")]
 async fn main() -> Result<()> {
     let BOT = Bot::from_env().auto_send();
+    println!("Bot starting with home folder {:?}", current_dir().unwrap());
     let hand_fun = |query: InlineQuery, bot: AutoSend<Bot>| async move {
         println!("Got query {:?}", query);
 
         let results: Vec<InlineQueryResult> = {
-            let matches = search(query.query).unwrap_or(vec![]);
+            let matches = match search(query.query) {
+                Ok(a) => a,
+                Err(e) => {
+                    println!("{:?}", e);
+                    vec![]
+                }
+            };
 
             matches
                 .iter()
