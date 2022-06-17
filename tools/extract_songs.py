@@ -2,34 +2,39 @@ from enum import Enum
 from typing import Optional, Union, List
 from TexSoup import TexSoup
 import re
-import itertools
 
 from TexSoup.data import TexNamedEnv, BraceGroup, TexCmd, TexMathModeEnv, TexNode
 import sys
 
 if sys.version_info >= (3, 9):
+
     def removeprefix(a, b):
         return a.removeprefix(b)
+
 else:
+
     def removeprefix(a, b):
-        return a[len(b):] if a.startswith(b) else a
+        return a[len(b) :] if a.startswith(b) else a
+
 
 latex_row_to_plain = re.compile(r"^[\s&]*(.*?)\s*$", flags=re.MULTILINE)
 has_2_columns = re.compile(r"^\s*[^\s]+\s*&\s*[^\s]+.*", flags=re.MULTILINE)
+
+
 def latex_str_to_str(latex: str) -> str:
     if latex.startswith("%"):
         return ""
 
-    #latex = removeprefix(latex, "\n")  # This maybe shouldn't in this function
-    #latex = latex.replace("\\\\", "\n")
+    # latex = removeprefix(latex, "\n")  # This maybe shouldn't in this function
+    # latex = latex.replace("\\\\", "\n")
 
     # if '\\\\' in latex and latex != '\\\\':
     #     breakpoint()
     #     print("hmm")
-    if latex == '\\\\':
-        return '\n'
+    if latex == "\\\\":
+        return "\n"
     if has_2_columns.match(latex):
-        latex = latex.replace('&', '\n')
+        latex = latex.replace("&", "\n")
     match = latex_row_to_plain.match(latex)
     if match is None:
         breakpoint()
@@ -43,18 +48,16 @@ HANDLE_AS_LITERAL = {"pykälä"}
 IGNORE = {"raisebox", "hspace*", "vspace", "mbox"}
 IGNORE_FORMATTING = {"oldstylenums", "textsc", "scriptsize", "mathbf"}
 
-import warnings
-
-from astropy.table import Table as AstroTable
 
 def get_visual_len(x: Union[TexCmd, str]) -> int:
     if isinstance(x, TexCmd):
-        if x.name == 'emph':
+        if x.name == "emph":
             assert len(x.contents) == 1
             return len(x.contents[0])
     elif isinstance(x, str):
         return len(x)
     raise ValueError("Unsupported type")
+
 
 def verse_args_to_str(
     latex_lines: List[Union[str, TexNamedEnv, TexCmd, TexMathModeEnv, BraceGroup]],
@@ -74,13 +77,13 @@ def verse_args_to_str(
                 out += verse_args_to_str(contents)
 
                 # out += "soolo:\"
-                #table = AstroTable.read([str(line)], format="latex", header_start=None, data_start=0)
-                #line.append('\\\\')
-                #breakpoint()
-                #table = AstroTable.read([str(line)], format="latex", header_start=None, data_start=0)
-                #try:
+                # table = AstroTable.read([str(line)], format="latex", header_start=None, data_start=0)
+                # line.append('\\\\')
+                # breakpoint()
+                # table = AstroTable.read([str(line)], format="latex", header_start=None, data_start=0)
+                # try:
                 #    table = AstroTable.read([str(line)], format="latex", header_start=None, data_start=0)
-                #except Exception as e:
+                # except Exception as e:
                 #    breakpoint()
                 #    print(e)
                 # https://stackoverflow.com/a/14529615/13994822
@@ -100,7 +103,6 @@ def verse_args_to_str(
                 #     for line in lines
                 #     for i in
                 # ]
-
 
                 # breakpoint()
 
@@ -184,6 +186,7 @@ SKIP_VERSE_TYPES = {
     "vspace*",
 }
 
+
 def handle_verses(content: List[TexNode]) -> str:
     out = ""
     for c in content:
@@ -232,7 +235,7 @@ def parse_tex(content: Union[str, bytes]) -> SongInfo:
     name, melody, _, _, start_alt_name, composer, arranger, *_ = song.args + nones
     song_content = song.children
     return SongInfo(
-        name=name.contents[0].replace('~', ' '),
+        name=name.contents[0].replace("~", " "),
         melody=melody.contents[0] if melody and melody.contents else None,
         composer=composer.contents[0] if composer and composer.contents else None,
         arranger=arranger.contents[0] if arranger and arranger.contents else None,
@@ -246,13 +249,14 @@ import json
 from tqdm import tqdm
 import os
 
-#WHITELIST = ("eino", "")
-WHITELIST = ('',)
+# WHITELIST = ("eino", "")
+WHITELIST = ("",)
+
 
 def main():
     songs = []
 
-    os.mkdir('songs')
+    # os.mkdir("songs")
     for pa in tqdm(glob("Fiisut-V/songs/*.tex")):
         if not any(x in pa.lower() for x in WHITELIST):
             continue
@@ -261,9 +265,11 @@ def main():
         song = parse_tex(tex)
         songs.append(asdict(song))
 
-        with open(f'songs/{song.name.replace(" ", "_").replace("/", "-")}.txt', 'w') as f:
-            f.writelines(f"{song.name}\n\n{song.lyrics}\n\n")
-        print(f"{song.name}\n\n{song.lyrics}\n\n")
+        # with open(
+        #     f'songs/{song.name.replace(" ", "_").replace("/", "-")}.txt', "w"
+        # ) as f:
+        #     f.writelines(f"{song.name}\n\n{song.lyrics}\n\n")
+        # print(f"{song.name}\n\n{song.lyrics}\n\n")
 
     with open("songs.json", "w") as f:
         json.dump(songs, f, indent=2)
