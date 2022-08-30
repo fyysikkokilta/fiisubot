@@ -11,8 +11,6 @@
 	import { onMount } from 'svelte';
 	export let setShowMore: (fun: () => any, e: Element) => void;
 	export let items: any[];
-	$: (items = [...items]);
-	$: console.log(items)
 	export let loadOnNthVisible: number = 10;
 	export let pageSize: number = 50;
 	export let start: number = 0;

@@ -18,8 +18,6 @@
 		);
 
 	export let items: any[];
-  $: (items = [...items])
-  $: console.log(items)
 
 	let showMore: () => void;
 	let observed: Element | undefined = undefined;

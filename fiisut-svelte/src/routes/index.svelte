@@ -1,16 +1,35 @@
-<script>
+<script lang="ts">
 	import MyInfiniteScroll from '$lib/MyInfiniteScrollParent.svelte';
-	//import allSongs from '$lib/lauluwiki.json';
-	import _allSongs from '$lib/songs.json';
-	$: searchTerm = '';
-	$: allSongs = _allSongs.map((e, i) => ({ ...e, index: i }));
-	$: filtSongs = allSongs.filter((s) => s.lyrics.toLowerCase().indexOf(searchTerm) !== -1);
-	//$: console.log(filtSongs)
-	//$: filtSongs = searchTerm == 'ata' ? allSongs : [{index: 10, lyrics: 'ur mama', name: 'jooh'}]
-	//function filterItems() {
-	//	filtSongs = allSongs.filter((s) => s.lyrics.toLowerCase().indexOf(searchTerm) !== -1);
-	//	console.log(filtSongs);
-	//}
+	import _allSongs from '$lib/lauluwiki.json';
+	import allSongs_idx from '$lib/lauluwiki_lunr_idx';
+	import lunr from 'lunr';
+	import lunr_stemmer from 'lunr-languages/lunr.stemmer.support.js';
+	//import lunr_fi from 'lunr-languages/lunr.fi.js';
+	import lunr_sv from 'lunr-languages/lunr.sv.js';
+	//import lunr_multi from 'lunr-languages/lunr.multi.js';
+
+	lunr_stemmer(lunr)
+	//lunr_fi(lunr)
+	lunr_sv(lunr)
+	//lunr_multi(lunr)
+	const idx = lunr.Index.load(allSongs_idx)
+
+	//import _allSongs from '$lib/songs.json';
+	let searchTerm = '';
+	const allSongs = _allSongs.map((e, i) => ({ ...e, index: i }));
+
+	let shownSongs = allSongs;
+	const getSongs = (searchTerm: str) => {
+		try{
+			return idx.search(searchTerm).map(e => allSongs[parseInt(e.ref)])
+		} catch (e) {
+			if (e instanceof lunr.QueryParseError) {
+				return shownSongs
+			}
+			throw e;
+		}
+	}
+	$: shownSongs = getSongs(searchTerm)
 </script>
 
 <div id="app">
@@ -31,7 +50,7 @@
 		</select> -->
 	</header>
 
-	<MyInfiniteScroll items={filtSongs}>
+	<MyInfiniteScroll items={shownSongs}>
 		<div slot="content">cont div</div>
 		<div slot="item" let:item>
 			{#if item}
