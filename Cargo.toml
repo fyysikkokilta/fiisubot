@@ -16,7 +16,7 @@ teloxide = { version = "0.9.2", default-features = false, features = [
   "rustls",
   "macros"
 ] }
-tokio =  { version = "1.19.2", features = ["macros", "rt-multi-thread"] }
+tokio =  { version = "1.26.0", features = ["macros", "rt-multi-thread"] }
 serde = "1.0.137"
 lazy_static = "1.4.0"
 
