@@ -1,29 +1,40 @@
-FROM docker.io/python:alpine AS extractor
-RUN pip install TexSoup tqdm
-WORKDIR /data
-COPY tools/extract_songs.py /data/
-COPY Fiisut-V/ /data/Fiisut-V/
+# Multi-stage build for Python Fiisut Telegram Bot
+ARG PY_VER=3.13
+
+# Stage 1: Extract songs from LaTeX files
+FROM python:${PY_VER}-slim AS extractor
+
+# Install dependencies for song extraction
+RUN pip install --no-cache-dir TexSoup tqdm
+
+# Set working directory
+WORKDIR /app
+
+# Copy extraction tools and song data
+COPY extract_songs.py ./
+COPY Fiisut-V/ ./Fiisut-V/
+
+# Extract songs to JSON
 RUN python extract_songs.py
 
-FROM docker.io/rust:alpine AS builder
-RUN apk add --no-cache musl-dev
-WORKDIR /data
-COPY Cargo.toml Cargo.lock /data
-RUN cargo fetch
-RUN mkdir -p src/indexer && touch src/main.rs src/indexer/main.rs \
-  && cargo build --release --offline --target=x86_64-unknown-linux-musl; exit 0
-RUN rm -rf src/
-COPY src/ /data/src/
-RUN cargo build --release --offline --target=x86_64-unknown-linux-musl --bins
-COPY --from=extractor /data/songs.json /data/songs.json
-RUN target/x86_64-unknown-linux-musl/release/index-builder
+# Stage 2: Production image
+FROM python:${PY_VER}-slim
 
-FROM docker.io/alpine
-ENV TELOXIDE_TOKEN=
-WORKDIR /data
-COPY songs.json /data/songs.json
-COPY --from=builder  /data/target/x86_64-unknown-linux-musl/release/fiisut_tg /data/data.mdb /data/lock.mdb /data/
-RUN ls /data
-#RUN exit 1
-ENTRYPOINT ["/data/fiisut_tg"]
-CMD [""]
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV TELEGRAM_BOT_TOKEN=""
+
+# Install runtime dependencies
+RUN pip install --no-cache-dir python-telegram-bot
+
+# Set working directory
+WORKDIR /app
+
+# Copy the bot code
+COPY fiisubot.py ./
+
+# Copy the extracted songs from the previous stage
+COPY --from=extractor /app/songs.json ./songs.json
+
+# Run the bot
+CMD ["python", "fiisubot.py"]

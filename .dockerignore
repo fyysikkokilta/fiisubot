@@ -1,0 +1,12 @@
+__pycache__
+.github
+.dockerignore
+.env
+.env.example
+.gitignore
+.gitmodules
+docker-compose.prod.yml
+docker-compose.yml
+Dockerfile
+README.md
+songs.json

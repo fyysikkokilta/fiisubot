@@ -4,19 +4,29 @@ version = "0.1.0"
 description = ""
 authors = ["Jaakko Sirén <Jaakko.Siren@pm.me>"]
 license = "MIT for code, all copyrights held for songs"
+package-mode = false
 
 [tool.poetry.dependencies]
-python = "^3.10"
-tqdm = "^4.64.0"
+python = "^3.13"
+tqdm = "^4.67.1"
 TexSoup = "^0.3.1"
+python-telegram-bot = "^22.1"
+aiofiles = "^24.1.0"
 
-[tool.poetry.dev-dependencies]
-black = "^22.3.0"
-mypy = "^0.950"
-pylint = "^2.13.9"
-ipykernel = "^6.13.0"
+[tool.poetry.group.dev.dependencies]
+black = "^25.1.0"
+mypy = "^1.16.1"
+pylint = "^3.3.7"
+ipykernel = "^6.29.5"
 TexSoup = "^0.3.1"
-poethepoet = "^0.13.1"
+poethepoet = "^0.35.0"
+pytest = "^8.4.1"
+pytest-asyncio = "^1.0.0"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^8.4.1"
+pytest-asyncio = "^1.0.0"
+pytest-mock = "^3.14.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -24,3 +34,39 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poe.tasks]
 extract-fiisut = {script="tools.extract_songs:main"}
+bot = "python fiisubot.py"
+test = "pytest"
+lint = "pylint fiisubot.py extract_songs.py"
+format = "black ."
+format-check = "black --check ."
+
+[tool.black]
+line-length = 88
+target-version = ['py313']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | Fiisut-V
+)/
+'''
+
+[tool.pylint.messages_control]
+disable = [
+    "C0114",  # missing-module-docstring
+    "C0115",  # missing-class-docstring
+    "C0116",  # missing-function-docstring
+    "R0903",  # too-few-public-methods
+]
+
+[tool.pylint.format]
+max-line-length = 88
