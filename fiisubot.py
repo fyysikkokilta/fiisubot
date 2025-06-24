@@ -254,7 +254,8 @@ async def send_help_message(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             "• /fiisu teemu\n"
             "• /fiisu juomalaulu\n"
             "• /fiisu polyteknikko\n\n"
-            f"📚 Tietokannassa on {len(song_db.songs)} laulua Fiisut-V kokoelmasta."
+            f"📚 Tietokannassa on {len(song_db.songs)} laulua Fiisut-V kokoelmasta.\n\n"
+            "🇬🇧 For English instructions, use /english"
         )
     else:
         message_text = (
@@ -265,7 +266,45 @@ async def send_help_message(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             "• /fiisu teemu\n"
             "• /fiisu juomalaulu\n"
             "• /fiisu polyteknikko\n\n"
-            f"📚 Tietokannassa on {len(song_db.songs)} laulua Fiisut-V kokoelmasta."
+            f"📚 Tietokannassa on {len(song_db.songs)} laulua Fiisut-V kokoelmasta.\n\n"
+            "🇬🇧 For English instructions, use /english"
+        )
+
+    await update.message.reply_text(
+        message_text, parse_mode=ParseMode.HTML, disable_web_page_preview=True
+    )
+
+
+async def send_help_message_english(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Handle /english command for English instructions."""
+    chat_type = update.effective_chat.type
+
+    if chat_type == "private":
+        message_text = (
+            "🎵 <b>Welcome to Fiisut Bot!</b>\n\n"
+            "Search for Finnish student songs:\n"
+            "• With command: /fiisu search_term\n"
+            "• Or just type the search term directly\n\n"
+            "<b>Examples:</b>\n"
+            "• /fiisu teemu\n"
+            "• /fiisu juomalaulu (drinking song)\n"
+            "• /fiisu polyteknikko (polytechnic)\n\n"
+            f"📚 Database contains {len(song_db.songs)} songs from the Fiisut-V collection.\n\n"
+            "🇫🇮 Suomenkieliset ohjeet: /help"
+        )
+    else:
+        message_text = (
+            "🎵 <b>Fiisut Bot</b>\n\n"
+            "Search for Finnish student songs with command:\n"
+            "/fiisu search_term\n\n"
+            "<b>Examples:</b>\n"
+            "• /fiisu teemu\n"
+            "• /fiisu juomalaulu (drinking song)\n"
+            "• /fiisu polyteknikko (polytechnic)\n\n"
+            f"📚 Database contains {len(song_db.songs)} songs from the Fiisut-V collection.\n\n"
+            "🇫🇮 Suomenkieliset ohjeet: /help"
         )
 
     await update.message.reply_text(
@@ -299,6 +338,7 @@ async def post_init(application: Application):
     # Commands work in both private chats and groups
     application.add_handler(CommandHandler("start", send_help_message))
     application.add_handler(CommandHandler("help", send_help_message))
+    application.add_handler(CommandHandler("english", send_help_message_english))
     application.add_handler(CommandHandler("fiisu", fiisu_command_handler))
 
     # Private messages (non-commands) are treated as search queries
