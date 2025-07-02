@@ -368,9 +368,31 @@ def handle_chorus(chorus: TexSoup) -> str: ...
 
 
 def handle_uverse(uverse: TexSoup) -> str:
+    import re
+
     assert len(uverse.args) == 1
     assert isinstance(uverse.args[0], BraceGroup)
-    return verse_args_to_str(uverse.args[0].contents)
+
+    # Get the raw verse content
+    raw_content = verse_args_to_str(uverse.args[0].contents)
+
+    # Clean up whitespace specifically for verse content
+    # 1. Replace multiple newlines with single newlines
+    cleaned = re.sub(r"\n\s*\n+", "\n", raw_content)
+
+    # 2. Remove leading/trailing whitespace from each line and clean up multiple spaces
+    lines = cleaned.split("\n")
+    cleaned_lines = []
+    for line in lines:
+        # Strip leading/trailing whitespace
+        line = line.strip()
+        if line:
+            # Replace multiple consecutive spaces with single spaces
+            line = re.sub(r"\s+", " ", line)
+            cleaned_lines.append(line)
+
+    # 3. Join with single newlines
+    return "\n".join(cleaned_lines)
 
 
 class VerseType(str, Enum):
