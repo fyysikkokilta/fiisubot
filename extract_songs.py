@@ -98,6 +98,21 @@ def get_visual_len(x: Union[TexCmd, str]) -> int:
     raise ValueError("Unsupported type")
 
 
+def clean_parameter_text(text: str) -> str:
+    """Clean parameter text by removing/converting LaTeX artifacts"""
+    if not text:
+        return text
+
+    # Handle remaining backslashes
+    text = text.replace("\\\\", " ")  # Convert line breaks to spaces
+    text = text.replace("\\", "")  # Remove remaining backslashes
+
+    # Clean up multiple spaces
+    text = " ".join(text.split())
+
+    return text.strip()
+
+
 def verse_args_to_str(
     latex_lines: List[Union[str, TexNamedEnv, TexCmd, TexMathModeEnv, BraceGroup]],
 ) -> str:
@@ -294,6 +309,15 @@ def verse_args_to_str(
                 ):
                     # Size commands - ignore and just output contents
                     out += verse_args_to_str(line.contents)
+                elif line.name == "$":
+                    # Math mode - just skip the content for now
+                    continue
+                elif line.name == "BraceGroup":
+                    # Handle unexpected BraceGroup as TexCmd
+                    out += verse_args_to_str(line.contents)
+                elif line.name == "normalfont":
+                    # Normal font - just output contents
+                    out += verse_args_to_str(line.contents)
                 else:
                     # Instead of raising an exception, log a warning and skip
                     print(f"Warning: Unexpected TexCmd {line.name}, skipping")
@@ -432,7 +456,7 @@ def extract_subsongs(content: List[TexNode]) -> List[tuple]:
                 if c.name == "samepage":
                     _extract_from_content(c.contents)
                 elif c.name == "subsong":
-                    # Extract subsong name from first argument
+                    # Extract subsong name from first argument with proper LaTeX processing
                     subsong_name = "Subsong"
                     if (
                         c.args
@@ -440,9 +464,11 @@ def extract_subsongs(content: List[TexNode]) -> List[tuple]:
                         and hasattr(c.args[0], "contents")
                         and c.args[0].contents
                     ):
-                        subsong_name = str(c.args[0].contents[0]).replace("~", " ")
+                        subsong_name = clean_parameter_text(
+                            verse_args_to_str(c.args[0].contents)
+                        )
 
-                    # Extract optional melody from second argument
+                    # Extract optional melody from second argument with proper LaTeX processing
                     subsong_melody = None
                     if (
                         c.args
@@ -450,7 +476,9 @@ def extract_subsongs(content: List[TexNode]) -> List[tuple]:
                         and hasattr(c.args[1], "contents")
                         and c.args[1].contents
                     ):
-                        melody_content = str(c.args[1].contents[0]).strip()
+                        melody_content = clean_parameter_text(
+                            verse_args_to_str(c.args[1].contents)
+                        )
                         if melody_content:  # Only set if not empty
                             subsong_melody = melody_content
 
@@ -523,25 +551,35 @@ def parse_tex(content: Union[str, bytes]) -> List[SongInfo]:
         name, melody, _, _, _, composer, arranger, *_ = song.args + nones
         song_content = song.children
 
-        # Safely extract name
+        # Safely extract name with proper LaTeX processing
         song_name = "Unknown Song"
         if name and hasattr(name, "contents") and name.contents:
-            song_name = str(name.contents[0]).replace("~", " ")
+            song_name = clean_parameter_text(verse_args_to_str(name.contents))
 
-        # Safely extract melody (original melody/tune)
+        # Safely extract melody with proper LaTeX processing
         song_melody = None
         if melody and hasattr(melody, "contents") and melody.contents:
-            song_melody = str(melody.contents[0])
+            melody_processed = clean_parameter_text(verse_args_to_str(melody.contents))
+            if melody_processed:  # Only set if not empty after processing
+                song_melody = melody_processed
 
-        # Safely extract composer
+        # Safely extract composer with proper LaTeX processing
         song_composer = None
         if composer and hasattr(composer, "contents") and composer.contents:
-            song_composer = str(composer.contents[0])
+            composer_processed = clean_parameter_text(
+                verse_args_to_str(composer.contents)
+            )
+            if composer_processed:  # Only set if not empty after processing
+                song_composer = composer_processed
 
-        # Safely extract arranger
+        # Safely extract arranger with proper LaTeX processing
         song_arranger = None
         if arranger and hasattr(arranger, "contents") and arranger.contents:
-            song_arranger = str(arranger.contents[0])
+            arranger_processed = clean_parameter_text(
+                verse_args_to_str(arranger.contents)
+            )
+            if arranger_processed:  # Only set if not empty after processing
+                song_arranger = arranger_processed
 
         # Extract notes from the entire document (notes are typically after the song environment)
         song_notes_list = extract_notes(t.contents)
