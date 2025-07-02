@@ -42,9 +42,11 @@ def latex_str_to_str(latex: str) -> str:
 
     if latex == "\\\\":
         return "\n"
-    if has_2_columns.match(latex):
-        latex = latex.replace("&", "\n")
-    match = latex_row_to_plain.match(latex)
+
+    # Since there are no tables, use a simple regex that preserves spaces AND newlines
+    # Use DOTALL flag so . matches newlines, allowing full content capture
+    space_preserving_regex = re.compile(r"^(.*?)$", flags=re.DOTALL)
+    match = space_preserving_regex.match(latex)
     if match is None:
         print(f"Warning: Could not parse latex string: {repr(latex)}")
         return latex  # Return as-is instead of breaking
