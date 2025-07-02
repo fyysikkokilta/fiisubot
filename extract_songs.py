@@ -118,7 +118,9 @@ def verse_args_to_str(
 
             elif isinstance(line, str):
                 out += latex_str_to_str(line)
-            elif isinstance(line, TexCmd):
+            elif isinstance(line, TexCmd) or (
+                hasattr(line, "name") and hasattr(line, "contents")
+            ):
                 if line.name in IGNORE_FORMATTING:
                     out += verse_args_to_str(line.contents)
                 elif line.name == "srepeat":
@@ -279,6 +281,10 @@ def verse_args_to_str(
                     out += "·"
                 elif line.name == "textellipsis":
                     out += "…"
+                elif line.name == "note":
+                    # Handle note commands within verses
+                    note_content = verse_args_to_str(line.contents)
+                    out += f" <i>{note_content}</i> "
                 elif (
                     line.name == "normalsize"
                     or line.name == "footnotesize"
@@ -370,6 +376,7 @@ SKIP_VERSE_TYPES = {
     "flushleft",
     "raggedright",
     "raggedleft",
+    "note",  # notes are handled separately
 }
 
 
@@ -396,6 +403,10 @@ def handle_verses_no_subsongs(content: List[TexNode]) -> str:
             elif c.name == "subsong":
                 # Skip subsongs - they will be processed separately
                 continue
+            elif c.name == "note":
+                # Handle note commands
+                note_content = verse_args_to_str(c.contents)
+                out += f"\n<i>{note_content}</i>\n\n"
             else:
                 print(f"Warning: Unexpected verse type `{c.name}`, skipping")
                 continue
@@ -455,6 +466,34 @@ def extract_subsongs(content: List[TexNode]) -> List[tuple]:
     return subsongs
 
 
+def extract_notes(content: List[TexNode]) -> List[str]:
+    """Extract notes from document content"""
+    notes = []
+
+    def _extract_notes_from_content(nodes):
+        for c in nodes:
+            try:
+                if not hasattr(c, "name"):
+                    continue
+
+                if not isinstance(c, TexNode):
+                    continue
+
+                if c.name == "note":
+                    note_content = verse_args_to_str(c.contents)
+                    notes.append(note_content)
+                # Don't recursively search inside song environments or other complex structures
+                # as this can cause infinite loops and content duplication
+                elif c.name in ["samepage", "subsong"]:
+                    _extract_notes_from_content(c.contents)
+            except Exception as e:
+                print(f"Error processing note {c}: {e}")
+                continue
+
+    _extract_notes_from_content(content)
+    return notes
+
+
 from dataclasses import dataclass
 
 
@@ -465,6 +504,8 @@ class SongInfo:
     composer: Optional[str]
     arranger: Optional[str]
     lyrics: str
+    # Additional original song information
+    notes: Optional[str] = None
 
 
 first_or_none = lambda x: x[0] if x else None
@@ -479,7 +520,7 @@ def parse_tex(content: Union[str, bytes]) -> List[SongInfo]:
         if not song:
             raise ValueError("No song or hymnisong environment found")
 
-        name, melody, _, _, start_alt_name, composer, arranger, *_ = song.args + nones
+        name, melody, _, _, _, composer, arranger, *_ = song.args + nones
         song_content = song.children
 
         # Safely extract name
@@ -487,7 +528,7 @@ def parse_tex(content: Union[str, bytes]) -> List[SongInfo]:
         if name and hasattr(name, "contents") and name.contents:
             song_name = str(name.contents[0]).replace("~", " ")
 
-        # Safely extract melody
+        # Safely extract melody (original melody/tune)
         song_melody = None
         if melody and hasattr(melody, "contents") and melody.contents:
             song_melody = str(melody.contents[0])
@@ -501,6 +542,10 @@ def parse_tex(content: Union[str, bytes]) -> List[SongInfo]:
         song_arranger = None
         if arranger and hasattr(arranger, "contents") and arranger.contents:
             song_arranger = str(arranger.contents[0])
+
+        # Extract notes from the entire document (notes are typically after the song environment)
+        song_notes_list = extract_notes(t.contents)
+        song_notes = " | ".join(song_notes_list) if song_notes_list else None
 
         # Extract subsongs
         subsongs = extract_subsongs(song_content)
@@ -520,10 +565,11 @@ def parse_tex(content: Union[str, bytes]) -> List[SongInfo]:
                     SongInfo(
                         name=full_subsong_name,
                         melody=subsong_melody
-                        or song_melody,  # Use subsong melody if available, fallback to main song melody
+                        or song_melody,  # Use subsong melody if available, fallback to original melody
                         composer=song_composer,
                         arranger=song_arranger,
                         lyrics=subsong_lyrics.strip(),
+                        notes=song_notes,
                     )
                 )
 
@@ -537,6 +583,7 @@ def parse_tex(content: Union[str, bytes]) -> List[SongInfo]:
                     composer=song_composer,
                     arranger=song_arranger,
                     lyrics=main_lyrics,
+                    notes=song_notes,
                 ),
             )
 
@@ -549,6 +596,7 @@ def parse_tex(content: Union[str, bytes]) -> List[SongInfo]:
                     composer=song_composer,
                     arranger=song_arranger,
                     lyrics="No content found",
+                    notes=song_notes,
                 )
             )
 

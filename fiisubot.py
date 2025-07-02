@@ -211,8 +211,32 @@ async def fiisu_command_handler(
         song = matching_songs[0]
         name = song.get("name", "Unknown Song")
         lyrics = song.get("lyrics", "No lyrics available")
+        melody = song.get("melody")
+        composer = song.get("composer")
+        arranger = song.get("arranger")
+        notes = song.get("notes")
 
-        message_text = f"🎵 <b>{escape_html(name)}</b>\n\n{escape_html(lyrics)}"
+        # Build the message with metadata
+        message_text = f"🎵 <b>{escape_html(name)}</b>\n"
+
+        # Add metadata if available
+        metadata_parts = []
+        if melody:
+            metadata_parts.append(f"🎼 Sävel: {escape_html(melody)}")
+        if composer:
+            metadata_parts.append(f"✍️ Säveltäjä: {escape_html(composer)}")
+        if arranger:
+            metadata_parts.append(f"🎹 Sovittaja: {escape_html(arranger)}")
+
+        if metadata_parts:
+            message_text += "\n" + "\n".join(metadata_parts) + "\n"
+
+        message_text += f"\n{escape_html(lyrics)}"
+
+        # Add notes if available
+        if notes:
+            message_text += f"\n\n📝 {notes}"
+
         await send_long_message(update, message_text)
     else:
         # If multiple results, show a list with first few lines of each
@@ -221,19 +245,33 @@ async def fiisu_command_handler(
         for i, song in enumerate(matching_songs, 1):
             name = song.get("name", "Unknown Song")
             lyrics = song.get("lyrics", "")
+            melody = song.get("melody")
+            composer = song.get("composer")
+
+            # Build metadata preview
+            metadata_preview = []
+            if melody:
+                metadata_preview.append(f"sävel: {melody}")
+            if composer:
+                metadata_preview.append(f"säv: {composer}")
 
             # Show first line or two of lyrics as preview
-            preview = lyrics.split("\n")[0] if lyrics else "Ei saatavilla"
-            if len(preview) > 50:
-                preview = preview[:50] + "..."
+            lyrics_preview = lyrics.split("\n")[0] if lyrics else "Ei saatavilla"
+            if len(lyrics_preview) > 40:
+                lyrics_preview = lyrics_preview[:40] + "..."
 
-            # Escape HTML in both name and preview
+            # Escape HTML in name and previews
             escaped_name = escape_html(name)
-            escaped_preview = escape_html(preview)
+            escaped_lyrics_preview = escape_html(lyrics_preview)
 
-            message_text += (
-                f"{i}. <b>{escaped_name}</b>\n   <i>{escaped_preview}</i>\n\n"
-            )
+            message_text += f"{i}. <b>{escaped_name}</b>\n"
+
+            # Add metadata if available
+            if metadata_preview:
+                escaped_metadata = escape_html(" | ".join(metadata_preview))
+                message_text += f"   📄 <i>{escaped_metadata}</i>\n"
+
+            message_text += f"   🎵 <i>{escaped_lyrics_preview}</i>\n\n"
 
         message_text += "💡 Tarkenna hakua saadaksesi koko laulun!"
 
