@@ -32,11 +32,8 @@ def latex_str_to_str(latex: str) -> str:
     latex = latex.replace("\\textbackslash", "\\")
 
     # Handle quotes
-    latex = latex.replace(
-        "``",
-        """)
-    latex = latex.replace("''", """,
-    )
+    latex = latex.replace("``", "\u201c")  # Opening double quote
+    latex = latex.replace("''", "\u201d")  # Closing double quote
     latex = latex.replace("`", "'")
 
     # Handle dashes
