@@ -4,17 +4,10 @@ from TexSoup import TexSoup
 import re
 
 from TexSoup.data import TexNamedEnv, BraceGroup, TexCmd, TexMathModeEnv, TexNode
-import sys
 
-if sys.version_info >= (3, 9):
 
-    def removeprefix(a, b):
-        return a.removeprefix(b)
-
-else:
-
-    def removeprefix(a, b):
-        return a[len(b) :] if a.startswith(b) else a
+def removeprefix(a, b):
+    return a.removeprefix(b)
 
 
 latex_row_to_plain = re.compile(r"^[\s&]*(.*?)\s*$", flags=re.MULTILINE)
@@ -25,12 +18,31 @@ def latex_str_to_str(latex: str) -> str:
     if latex.startswith("%"):
         return ""
 
-    # latex = removeprefix(latex, "\n")  # This maybe shouldn't in this function
-    # latex = latex.replace("\\\\", "\n")
+    # Handle non-breaking spaces
+    latex = latex.replace("~", " ")
 
-    # if '\\\\' in latex and latex != '\\\\':
-    #     print("Found double backslash")
-    #     print(repr(latex))
+    # Handle common LaTeX escape sequences
+    latex = latex.replace("\\&", "&")
+    latex = latex.replace("\\$", "$")
+    latex = latex.replace("\\%", "%")
+    latex = latex.replace("\\#", "#")
+    latex = latex.replace("\\_", "_")
+    latex = latex.replace("\\{", "{")
+    latex = latex.replace("\\}", "}")
+    latex = latex.replace("\\textbackslash", "\\")
+
+    # Handle quotes
+    latex = latex.replace(
+        "``",
+        """)
+    latex = latex.replace("''", """,
+    )
+    latex = latex.replace("`", "'")
+
+    # Handle dashes
+    latex = latex.replace("---", "—")  # em dash
+    latex = latex.replace("--", "–")  # en dash
+
     if latex == "\\\\":
         return "\n"
     if has_2_columns.match(latex):
@@ -46,8 +58,34 @@ def latex_str_to_str(latex: str) -> str:
 # handle these words as literals.
 # Another option would be to preprocess the text so that `\ ` would be replaced by ` `.
 HANDLE_AS_LITERAL = {"pykälä"}
-IGNORE = {"raisebox", "hspace*", "vspace", "mbox"}
-IGNORE_FORMATTING = {"oldstylenums", "textsc", "scriptsize", "mathbf"}
+IGNORE = {
+    "raisebox",
+    "hspace*",
+    "vspace",
+    "mbox",
+    "hspace",
+    "vspace*",
+    "newline",
+    "pagebreak",
+    "flushright",
+    "flushleft",
+    "center",
+    "includegraphics",
+}
+IGNORE_FORMATTING = {
+    "oldstylenums",
+    "textsc",
+    "scriptsize",
+    "mathbf",
+    "normalsize",
+    "footnotesize",
+    "small",
+    "large",
+    "Large",
+    "huge",
+    "Huge",
+    "tiny",
+}
 
 
 def get_visual_len(x: Union[TexCmd, str]) -> int:
@@ -69,13 +107,14 @@ def verse_args_to_str(
         try:
             if isinstance(line, TexNamedEnv):
                 if line.name == "chorus":
-                    assert line.name == "chorus"
                     out += "<i>"
                     out += verse_args_to_str(line.contents)
                     out += "</i>"
                 elif line.name == "tabular":  # Used for solos
                     contents = line.contents[len(line.args) :]
-                    out += verse_args_to_str(contents)
+                    tabular_content = verse_args_to_str(contents)
+                    # Process tabular content for role indicators
+                    out += process_tabular_content(tabular_content)
 
             elif isinstance(line, str):
                 out += latex_str_to_str(line)
@@ -113,6 +152,142 @@ def verse_args_to_str(
                     out += "..."
                 elif line.name == "epsilon":
                     out += "ε"
+                elif line.name == "alpha":
+                    out += "α"
+                elif line.name == "beta":
+                    out += "β"
+                elif line.name == "gamma":
+                    out += "γ"
+                elif line.name == "delta":
+                    out += "δ"
+                elif line.name == "pi":
+                    out += "π"
+                elif line.name == "sigma":
+                    out += "σ"
+                elif line.name == "omega":
+                    out += "ω"
+                elif line.name == "lambda":
+                    out += "λ"
+                elif line.name == "mu":
+                    out += "μ"
+                elif line.name == "tau":
+                    out += "τ"
+                elif line.name == "phi":
+                    out += "φ"
+                elif line.name == "theta":
+                    out += "θ"
+                elif line.name == "textbf":
+                    out += "<b>"
+                    out += verse_args_to_str(line.contents)
+                    out += "</b>"
+                elif line.name == "textrm":
+                    # Regular text - just output contents
+                    out += verse_args_to_str(line.contents)
+                elif line.name == "underline":
+                    out += "<u>"
+                    out += verse_args_to_str(line.contents)
+                    out += "</u>"
+                elif line.name == "texttt":
+                    out += "<tt>"
+                    out += verse_args_to_str(line.contents)
+                    out += "</tt>"
+                elif line.name == "copyright":
+                    out += "©"
+                elif line.name == "trademark" or line.name == "texttrademark":
+                    out += "™"
+                elif line.name == "registered":
+                    out += "®"
+                elif line.name == "degree":
+                    out += "°"
+                elif line.name == "euro":
+                    out += "€"
+                elif line.name == "pounds":
+                    out += "£"
+                elif line.name == "yen":
+                    out += "¥"
+                elif line.name == "S":
+                    out += "§"
+                elif line.name == "P":
+                    out += "¶"
+                elif line.name == "dag":
+                    out += "†"
+                elif line.name == "ddag":
+                    out += "‡"
+                elif line.name == "textquotedblleft":
+                    out += """
+                elif line.name == "textquotedblright":
+                    out += """
+                elif line.name == "textquoteleft":
+                    out += "'"
+                elif line.name == "textquoteright":
+                    out += "'"
+                elif line.name == "guillemotleft":
+                    out += "«"
+                elif line.name == "guillemotright":
+                    out += "»"
+                elif line.name == "aa":
+                    out += "å"
+                elif line.name == "AA":
+                    out += "Å"
+                elif line.name == "ae":
+                    out += "æ"
+                elif line.name == "AE":
+                    out += "Æ"
+                elif line.name == "oe":
+                    out += "ø"
+                elif line.name == "OE":
+                    out += "Ø"
+                elif line.name == "ss":
+                    out += "ß"
+                elif line.name == "l":
+                    out += "ł"
+                elif line.name == "L":
+                    out += "Ł"
+                elif line.name == "o":
+                    out += "ō"
+                elif line.name == "textbar":
+                    out += "|"
+                elif line.name == "textasciitilde":
+                    out += "~"
+                elif line.name == "textasciicircum":
+                    out += "^"
+                elif line.name == "textbackslash":
+                    out += "\\"
+                elif line.name == "textgreater":
+                    out += ">"
+                elif line.name == "textless":
+                    out += "<"
+                elif line.name == "textexclamdown":
+                    out += "¡"
+                elif line.name == "textquestiondown":
+                    out += "¿"
+                elif line.name == "textemdash":
+                    out += "—"
+                elif line.name == "textendash":
+                    out += "–"
+                elif line.name == "texttimes":
+                    out += "×"
+                elif line.name == "textdiv":
+                    out += "÷"
+                elif line.name == "textpm":
+                    out += "±"
+                elif line.name == "textminus":
+                    out += "−"
+                elif line.name == "textbullet":
+                    out += "•"
+                elif line.name == "textperiodcentered":
+                    out += "·"
+                elif line.name == "textellipsis":
+                    out += "…"
+                elif (
+                    line.name == "normalsize"
+                    or line.name == "footnotesize"
+                    or line.name == "small"
+                    or line.name == "large"
+                    or line.name == "Large"
+                ):
+                    # Size commands - ignore and just output contents
+                    out += verse_args_to_str(line.contents)
                 else:
                     # Instead of raising an exception, log a warning and skip
                     print(f"Warning: Unexpected TexCmd {line.name}, skipping")
@@ -129,6 +304,35 @@ def verse_args_to_str(
             print(f"Error processing line {line}: {e}")
             continue
     return out
+
+
+def process_tabular_content(content: str) -> str:
+    """Process tabular content to format role indicators properly"""
+    import re
+
+    # Pattern to match role indicators at the start of lines
+    role_pattern = r"^(\s*)(soolo|kaikki|kuoro|joku™?):(\s*)"
+
+    # Split content into lines and process each line
+    lines = content.split("\n")
+    processed_lines = []
+
+    for line in lines:
+        # Check if line starts with a role indicator
+        match = re.match(role_pattern, line, re.IGNORECASE)
+        if match:
+            prefix = match.group(1)  # whitespace before
+            role = match.group(2)  # the role (soolo, kaikki, etc.)
+            suffix = match.group(3)  # whitespace after
+            rest = line[match.end() :]  # rest of the line
+
+            # Format the role indicator
+            formatted_line = f"{prefix}<b>{role}:</b>{suffix}{rest}"
+            processed_lines.append(formatted_line)
+        else:
+            processed_lines.append(line)
+
+    return "\n".join(processed_lines)
 
 
 def handle_chorus(chorus: TexSoup) -> str: ...
@@ -156,6 +360,16 @@ SKIP_VERSE_TYPES = {
     "newline",
     "BraceGroup",
     "vspace*",
+    "vspace",
+    "hspace",
+    "hspace*",
+    "includegraphics",
+    "figure",
+    "center",
+    "flushright",
+    "flushleft",
+    "raggedright",
+    "raggedleft",
 }
 
 
