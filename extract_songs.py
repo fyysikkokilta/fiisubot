@@ -159,7 +159,8 @@ SKIP_VERSE_TYPES = {
 }
 
 
-def handle_verses(content: List[TexNode]) -> str:
+def handle_verses_no_subsongs(content: List[TexNode]) -> str:
+    """Handle verses but skip subsongs (they will be processed separately)"""
     out = ""
     for c in content:
         try:
@@ -170,19 +171,17 @@ def handle_verses(content: List[TexNode]) -> str:
                 continue
 
             if c.name == "samepage":
-                out += handle_verses(c.contents)
+                out += handle_verses_no_subsongs(c.contents)
             elif c.name == "uverse":
                 out += handle_uverse(c)
                 out += "\n\n"
+            elif c.name == "chorus":
+                out += "<i>"
+                out += verse_args_to_str(c.contents)
+                out += "</i>\n\n"
             elif c.name == "subsong":
-                verses = [
-                    a for a in c.contents if isinstance(a, TexNode)
-                ]  # name str, verses uverse TexNodes
-                name = c.contents[0]  # c.args[0]
-                # alt_name = c.args[1].content  (BraceGroup contents)
-                out += "<i>" + str(name) + "</i>\n"
-                out += handle_verses(verses)
-                out += "\n\n"
+                # Skip subsongs - they will be processed separately
+                continue
             else:
                 print(f"Warning: Unexpected verse type `{c.name}`, skipping")
                 continue
@@ -190,6 +189,56 @@ def handle_verses(content: List[TexNode]) -> str:
             print(f"Error processing verse content {c}: {e}")
             continue
     return out
+
+
+def extract_subsongs(content: List[TexNode]) -> List[tuple]:
+    """Extract subsongs as separate entities"""
+    subsongs = []
+
+    def _extract_from_content(nodes):
+        for c in nodes:
+            try:
+                if not hasattr(c, "name"):
+                    continue
+
+                if not isinstance(c, TexNode):
+                    continue
+
+                if c.name == "samepage":
+                    _extract_from_content(c.contents)
+                elif c.name == "subsong":
+                    # Extract subsong name from first argument
+                    subsong_name = "Subsong"
+                    if (
+                        c.args
+                        and len(c.args) > 0
+                        and hasattr(c.args[0], "contents")
+                        and c.args[0].contents
+                    ):
+                        subsong_name = str(c.args[0].contents[0]).replace("~", " ")
+
+                    # Extract optional melody from second argument
+                    subsong_melody = None
+                    if (
+                        c.args
+                        and len(c.args) > 1
+                        and hasattr(c.args[1], "contents")
+                        and c.args[1].contents
+                    ):
+                        melody_content = str(c.args[1].contents[0]).strip()
+                        if melody_content:  # Only set if not empty
+                            subsong_melody = melody_content
+
+                    # Process subsong contents (verses, chorus, etc.)
+                    subsong_lyrics = handle_verses_no_subsongs(c.contents)
+
+                    subsongs.append((subsong_name, subsong_melody, subsong_lyrics))
+            except Exception as e:
+                print(f"Error processing subsong {c}: {e}")
+                continue
+
+    _extract_from_content(content)
+    return subsongs
 
 
 from dataclasses import dataclass
@@ -207,7 +256,7 @@ class SongInfo:
 first_or_none = lambda x: x[0] if x else None
 
 
-def parse_tex(content: Union[str, bytes]) -> SongInfo:
+def parse_tex(content: Union[str, bytes]) -> List[SongInfo]:
     try:
         t: TexNode = TexSoup(content)
         nones = [None] * 10
@@ -239,23 +288,70 @@ def parse_tex(content: Union[str, bytes]) -> SongInfo:
         if arranger and hasattr(arranger, "contents") and arranger.contents:
             song_arranger = str(arranger.contents[0])
 
-        return SongInfo(
-            name=song_name,
-            melody=song_melody,
-            composer=song_composer,
-            arranger=song_arranger,
-            lyrics=handle_verses(song_content),
-        )
+        # Extract subsongs
+        subsongs = extract_subsongs(song_content)
+
+        # Get main song lyrics (without subsongs)
+        main_lyrics = handle_verses_no_subsongs(song_content).strip()
+
+        songs = []
+
+        # If there are subsongs, create separate songs for each
+        if subsongs:
+            for subsong_name, subsong_melody, subsong_lyrics in subsongs:
+                # Create a combined name for the subsong
+                full_subsong_name = f"{song_name} - {subsong_name}"
+
+                songs.append(
+                    SongInfo(
+                        name=full_subsong_name,
+                        melody=subsong_melody
+                        or song_melody,  # Use subsong melody if available, fallback to main song melody
+                        composer=song_composer,
+                        arranger=song_arranger,
+                        lyrics=subsong_lyrics.strip(),
+                    )
+                )
+
+        # If there's main content (verses outside of subsongs), add it as the main song
+        if main_lyrics:
+            songs.insert(
+                0,
+                SongInfo(
+                    name=song_name,
+                    melody=song_melody,
+                    composer=song_composer,
+                    arranger=song_arranger,
+                    lyrics=main_lyrics,
+                ),
+            )
+
+        # If no subsongs and no main content, return the original single song
+        if not songs:
+            songs.append(
+                SongInfo(
+                    name=song_name,
+                    melody=song_melody,
+                    composer=song_composer,
+                    arranger=song_arranger,
+                    lyrics="No content found",
+                )
+            )
+
+        return songs
+
     except Exception as e:
         print(f"Error parsing TeX content: {e}")
         # Return a minimal song info
-        return SongInfo(
-            name="Parse Error",
-            melody=None,
-            composer=None,
-            arranger=None,
-            lyrics="Could not parse this song",
-        )
+        return [
+            SongInfo(
+                name="Parse Error",
+                melody=None,
+                composer=None,
+                arranger=None,
+                lyrics="Could not parse this song",
+            )
+        ]
 
 
 from glob import glob
@@ -296,13 +392,15 @@ def main():
                 failed_files.append(pa)
                 continue
 
-            song = parse_tex(tex)
+            parsed_songs = parse_tex(tex)
 
-            # Skip songs that failed to parse properly
-            if song.name != "Parse Error":
-                songs.append(asdict(song))
-            else:
-                failed_files.append(pa)
+            # Process each song (main song and subsongs)
+            for song in parsed_songs:
+                if song.name != "Parse Error":
+                    songs.append(asdict(song))
+                else:
+                    failed_files.append(pa)
+                    break  # If any song failed, mark the whole file as failed
 
         except Exception as e:
             print(f"Error processing file {pa}: {e}")
