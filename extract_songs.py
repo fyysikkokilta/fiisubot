@@ -504,13 +504,22 @@ def handle_verses_no_subsongs(content: List[TexNode]) -> str:
 def clean_final_output(text: str) -> str:
     """Clean up the final output to ensure consistent spacing"""
 
-    # Replace NEWCHAPTER placeholders with two newlines
-    text = text.replace("NEWCHAPTER", "\n\n")
-
     # Remove leading/trailing whitespace
     text = text.strip()
 
-    # Replace multiple consecutive newlines with exactly two newlines
+    # Replace multiple consecutive newlines with exactly one newline
+    text = re.sub(r"\n{2,}", "\n", text)
+
+    # Replace NEWCHAPTER placeholders with two newlines
+    text = text.replace("NEWCHAPTER", "\n\n")
+
+    # Remove newlines immediately after <i> tags
+    text = re.sub(r"<i>\n", "<i>", text)
+
+    # Remove newlines immediately before </i> tags
+    text = re.sub(r"\n</i>", "</i>", text)
+
+    # Ensure there is at most two new lines in a row, considering html tags also
     text = re.sub(r"\n{3,}", "\n\n", text)
 
     # Ensure the text ends with exactly two newlines
