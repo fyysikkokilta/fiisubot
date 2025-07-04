@@ -2,6 +2,11 @@ from enum import Enum
 from typing import Optional, Union, List
 from TexSoup import TexSoup
 import re
+import json
+import os
+from glob import glob
+from dataclasses import dataclass, asdict
+from tqdm import tqdm
 
 from TexSoup.data import TexNamedEnv, BraceGroup, TexCmd, TexMathModeEnv, TexNode
 
@@ -543,9 +548,6 @@ def extract_notes(content: List[TexNode]) -> List[str]:
     return notes
 
 
-from dataclasses import dataclass
-
-
 @dataclass
 class SongInfo:
     name: str
@@ -675,12 +677,6 @@ def parse_tex(content: Union[str, bytes]) -> List[SongInfo]:
         ]
 
 
-from glob import glob
-from dataclasses import asdict
-import json
-from tqdm import tqdm
-import os
-
 # WHITELIST = ("eino", "")
 WHITELIST = ("",)
 
@@ -693,13 +689,13 @@ def song_contains_todo(song: SongInfo) -> bool:
         song.composer,
         song.arranger,
         song.lyrics,
-        song.notes
+        song.notes,
     ]
-    
+
     for field in fields_to_check:
         if field and "TODO" in field:
             return True
-    
+
     return False
 
 
