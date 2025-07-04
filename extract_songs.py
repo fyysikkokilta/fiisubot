@@ -126,9 +126,9 @@ def verse_args_to_str(
         try:
             if isinstance(line, TexNamedEnv):
                 if line.name == "chorus":
-                    out += "<i>"
+                    out += "NEWCHAPTER<i>"
                     out += verse_args_to_str(line.contents)
-                    out += "</i>"
+                    out += "</i>NEWCHAPTER"
                 elif line.name == "tabular":  # Used for solos
                     contents = line.contents[len(line.args) :]
                     tabular_content = verse_args_to_str(contents)
@@ -369,9 +369,6 @@ def process_tabular_content(content: str) -> str:
     return "\n".join(processed_lines)
 
 
-def handle_chorus(chorus: TexSoup) -> str: ...
-
-
 def handle_uverse(uverse: TexSoup) -> str:
     import re
 
@@ -380,6 +377,44 @@ def handle_uverse(uverse: TexSoup) -> str:
 
     # Get the raw verse content
     raw_content = verse_args_to_str(uverse.args[0].contents)
+
+    # Clean up whitespace specifically for verse content
+    # 1. Replace multiple newlines with single newlines
+    cleaned = re.sub(r"\n\s*\n+", "\n", raw_content)
+
+    # 2. Remove leading/trailing whitespace from each line and clean up multiple spaces
+    lines = cleaned.split("\n")
+    cleaned_lines = []
+    for line in lines:
+        # Strip leading/trailing whitespace
+        line = line.strip()
+        if line:
+            # Replace multiple consecutive spaces with single spaces
+            line = re.sub(r"\s+", " ", line)
+            cleaned_lines.append(line)
+
+    # 3. Join with single newlines
+    return "\n".join(cleaned_lines)
+
+
+def handle_nverse(nverse: TexSoup) -> str:
+    """Handle numbered verses (nverse and mnverse) similar to uverse"""
+    import re
+
+    # For nverse, there's one argument (the verse content)
+    if len(nverse.args) == 1:
+        assert isinstance(nverse.args[0], BraceGroup)
+        raw_content = verse_args_to_str(nverse.args[0].contents)
+    # For mnverse, there are two arguments (verse content and repeat content)
+    elif len(nverse.args) == 2:
+        assert isinstance(nverse.args[0], BraceGroup)
+        assert isinstance(nverse.args[1], BraceGroup)
+        verse_content = verse_args_to_str(nverse.args[0].contents)
+        repeat_content = verse_args_to_str(nverse.args[1].contents)
+        raw_content = verse_content + "\n" + repeat_content
+    else:
+        print(f"Warning: Unexpected number of arguments for {nverse.name}")
+        return ""
 
     # Clean up whitespace specifically for verse content
     # 1. Replace multiple newlines with single newlines
@@ -444,26 +479,53 @@ def handle_verses_no_subsongs(content: List[TexNode]) -> str:
             if c.name == "samepage":
                 out += handle_verses_no_subsongs(c.contents)
             elif c.name == "uverse":
+                out += "NEWCHAPTER"
                 out += handle_uverse(c)
-                out += "\n\n"
+                out += "NEWCHAPTER"
+            elif c.name == "nverse" or c.name == "mnverse":
+                out += "NEWCHAPTER"
+                out += handle_nverse(c)
+                out += "NEWCHAPTER"
             elif c.name == "chorus":
-                out += "<i>"
+                out += "NEWCHAPTER<i>"
                 out += verse_args_to_str(c.contents)
-                out += "</i>\n\n"
+                out += "</i>NEWCHAPTER"
             elif c.name == "subsong":
                 # Skip subsongs - they will be processed separately
                 continue
             elif c.name == "note":
                 # Handle note commands
                 note_content = verse_args_to_str(c.contents)
-                out += f"\n<i>{note_content}</i>\n\n"
+                out += f"NEWCHAPTER<i>{note_content}</i>NEWCHAPTER"
             else:
                 print(f"Warning: Unexpected verse type `{c.name}`, skipping")
                 continue
         except Exception as e:
             print(f"Error processing verse content {c}: {e}")
             continue
-    return out
+
+    # Clean up the final output to ensure consistent spacing
+    return clean_final_output(out)
+
+
+def clean_final_output(text: str) -> str:
+    """Clean up the final output to ensure consistent spacing"""
+    import re
+
+    # Replace NEWCHAPTER placeholders with two newlines
+    text = text.replace("NEWCHAPTER", "\n\n")
+
+    # Remove leading/trailing whitespace
+    text = text.strip()
+
+    # Replace multiple consecutive newlines with exactly two newlines
+    text = re.sub(r"\n{3,}", "\n\n", text)
+
+    # Ensure the text ends with exactly two newlines
+    if text and not text.endswith("\n\n"):
+        text += "\n\n"
+
+    return text
 
 
 def extract_subsongs(content: List[TexNode]) -> List[tuple]:
