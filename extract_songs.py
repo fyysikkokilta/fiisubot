@@ -685,6 +685,24 @@ import os
 WHITELIST = ("",)
 
 
+def song_contains_todo(song: SongInfo) -> bool:
+    """Check if a song contains 'TODO' in any of its fields."""
+    fields_to_check = [
+        song.name,
+        song.melody,
+        song.composer,
+        song.arranger,
+        song.lyrics,
+        song.notes
+    ]
+    
+    for field in fields_to_check:
+        if field and "TODO" in field:
+            return True
+    
+    return False
+
+
 def main():
     songs = []
     failed_files = []
@@ -718,7 +736,9 @@ def main():
             # Process each song (main song and subsongs)
             for song in parsed_songs:
                 if song.name != "Parse Error":
-                    songs.append(asdict(song))
+                    # Filter out songs that contain TODO in any field
+                    if not song_contains_todo(song):
+                        songs.append(asdict(song))
                 else:
                     failed_files.append(pa)
                     break  # If any song failed, mark the whole file as failed
