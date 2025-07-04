@@ -1,14 +1,13 @@
-from enum import Enum
-from typing import Optional, Union, List
-from TexSoup import TexSoup
-import re
 import json
-import os
+import re
+from dataclasses import asdict, dataclass
+from enum import Enum
 from glob import glob
-from dataclasses import dataclass, asdict
-from tqdm import tqdm
+from typing import List, Optional, Union
 
-from TexSoup.data import TexNamedEnv, BraceGroup, TexCmd, TexMathModeEnv, TexNode
+from TexSoup import TexSoup
+from TexSoup.data import BraceGroup, TexCmd, TexMathModeEnv, TexNamedEnv, TexNode
+from tqdm import tqdm
 
 
 def removeprefix(a, b):
@@ -120,7 +119,6 @@ def clean_parameter_text(text: str) -> str:
 def verse_args_to_str(
     latex_lines: List[Union[str, TexNamedEnv, TexCmd, TexMathModeEnv, BraceGroup]],
 ) -> str:
-    # TODO: Add support for `~` non-breaking space
     out = ""
     for line in latex_lines:
         try:
@@ -153,7 +151,7 @@ def verse_args_to_str(
                 elif line.name == "srepeatleft":
                     out += ":,: "
                     out += verse_args_to_str(line.contents)
-                elif line.name == "ldots" or line.name == "dots":
+                elif line.name in ("ldots", "dots"):
                     out += "..."
                 elif line.name == "textit":
                     out += "<i>"
@@ -214,7 +212,7 @@ def verse_args_to_str(
                     out += "</tt>"
                 elif line.name == "copyright":
                     out += "©"
-                elif line.name == "trademark" or line.name == "texttrademark":
+                elif line.name in ("trademark", "texttrademark"):
                     out += "™"
                 elif line.name == "registered":
                     out += "®"
@@ -304,12 +302,12 @@ def verse_args_to_str(
                     # Handle note commands within verses
                     note_content = verse_args_to_str(line.contents)
                     out += f" <i>{note_content}</i> "
-                elif (
-                    line.name == "normalsize"
-                    or line.name == "footnotesize"
-                    or line.name == "small"
-                    or line.name == "large"
-                    or line.name == "Large"
+                elif line.name in (
+                    "normalsize",
+                    "footnotesize",
+                    "small",
+                    "large",
+                    "Large",
                 ):
                     # Size commands - ignore and just output contents
                     out += verse_args_to_str(line.contents)
@@ -334,15 +332,14 @@ def verse_args_to_str(
                 # Instead of raising an exception, log a warning and skip
                 print(f"Warning: Unexpected line type {type(line)}, skipping")
                 continue
-        except Exception as e:
-            print(f"Error processing line {line}: {e}")
+        except (ValueError, AttributeError, IndexError) as e:
+            print(f"Error processing verse content {line}: {e}")
             continue
     return out
 
 
 def process_tabular_content(content: str) -> str:
     """Process tabular content to format role indicators properly"""
-    import re
 
     # Pattern to match role indicators at the start of lines
     role_pattern = r"^(\s*)(soolo|kaikki|kuoro|joku™?):(\s*)"
@@ -370,8 +367,6 @@ def process_tabular_content(content: str) -> str:
 
 
 def handle_uverse(uverse: TexSoup) -> str:
-    import re
-
     assert len(uverse.args) == 1
     assert isinstance(uverse.args[0], BraceGroup)
 
@@ -399,7 +394,6 @@ def handle_uverse(uverse: TexSoup) -> str:
 
 def handle_nverse(nverse: TexSoup) -> str:
     """Handle numbered verses (nverse and mnverse) similar to uverse"""
-    import re
 
     # For nverse, there's one argument (the verse content)
     if len(nverse.args) == 1:
@@ -436,10 +430,10 @@ def handle_nverse(nverse: TexSoup) -> str:
 
 
 class VerseType(str, Enum):
-    unnumbered = "uverse"
-    numbered = "nverse"
-    twice_numbered = "mnverse"
-    subsong = "subsong"
+    UNNUMBERED = "uverse"
+    NUMBERED = "nverse"
+    TWICE_NUMBERED = "mnverse"
+    SUBSONG = "subsong"
 
 
 SKIP_VERSE_TYPES = {
@@ -482,8 +476,7 @@ def handle_verses_no_subsongs(content: List[TexNode]) -> str:
                 out += "NEWCHAPTER"
                 out += handle_uverse(c)
                 out += "NEWCHAPTER"
-            elif c.name == "nverse" or c.name == "mnverse":
-                out += "NEWCHAPTER"
+            elif c.name in ("nverse", "mnverse"):
                 out += handle_nverse(c)
                 out += "NEWCHAPTER"
             elif c.name == "chorus":
@@ -500,7 +493,7 @@ def handle_verses_no_subsongs(content: List[TexNode]) -> str:
             else:
                 print(f"Warning: Unexpected verse type `{c.name}`, skipping")
                 continue
-        except Exception as e:
+        except (ValueError, AttributeError, IndexError) as e:
             print(f"Error processing verse content {c}: {e}")
             continue
 
@@ -510,7 +503,6 @@ def handle_verses_no_subsongs(content: List[TexNode]) -> str:
 
 def clean_final_output(text: str) -> str:
     """Clean up the final output to ensure consistent spacing"""
-    import re
 
     # Replace NEWCHAPTER placeholders with two newlines
     text = text.replace("NEWCHAPTER", "\n\n")
@@ -574,7 +566,7 @@ def extract_subsongs(content: List[TexNode]) -> List[tuple]:
                     subsong_lyrics = handle_verses_no_subsongs(c.contents)
 
                     subsongs.append((subsong_name, subsong_melody, subsong_lyrics))
-            except Exception as e:
+            except (ValueError, AttributeError, IndexError) as e:
                 print(f"Error processing subsong {c}: {e}")
                 continue
 
@@ -602,7 +594,7 @@ def extract_notes(content: List[TexNode]) -> List[str]:
                 # as this can cause infinite loops and content duplication
                 elif c.name in ["samepage", "subsong"]:
                     _extract_notes_from_content(c.contents)
-            except Exception as e:
+            except (ValueError, AttributeError, IndexError) as e:
                 print(f"Error processing note {c}: {e}")
                 continue
 
@@ -621,7 +613,9 @@ class SongInfo:
     notes: Optional[str] = None
 
 
-first_or_none = lambda x: x[0] if x else None
+def first_or_none(x):
+    """Return the first element of x if x exists, otherwise None."""
+    return x[0] if x else None
 
 
 def parse_tex(content: Union[str, bytes]) -> List[SongInfo]:
@@ -725,7 +719,7 @@ def parse_tex(content: Union[str, bytes]) -> List[SongInfo]:
 
         return songs
 
-    except Exception as e:
+    except (ValueError, AttributeError, IndexError) as e:
         print(f"Error parsing TeX content: {e}")
         # Return a minimal song info
         return [
@@ -801,7 +795,7 @@ def main():
                     failed_files.append(pa)
                     break  # If any song failed, mark the whole file as failed
 
-        except Exception as e:
+        except (ValueError, AttributeError, IndexError, UnicodeDecodeError) as e:
             print(f"Error processing file {pa}: {e}")
             failed_files.append(pa)
             continue

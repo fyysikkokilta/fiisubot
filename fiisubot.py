@@ -9,20 +9,18 @@ Use /fiisu <search_term> to search for songs.
 import json
 import logging
 import os
-import html
-from typing import List, Dict, Any
+import re
+from typing import Any, Dict, List
 
-from telegram import (
-    Update,
-)
+from telegram import Update
+from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
     CommandHandler,
-    MessageHandler,
     ContextTypes,
+    MessageHandler,
     filters,
 )
-from telegram.constants import ParseMode
 
 
 # Configure logging
@@ -45,12 +43,12 @@ class SongDatabase:
         try:
             with open(songs_file, "r", encoding="utf-8") as f:
                 self.songs = json.load(f)
-            logger.info(f"Loaded {len(self.songs)} songs from {songs_file}")
+            logger.info("Loaded %d songs from %s", len(self.songs), songs_file)
         except FileNotFoundError:
-            logger.error(f"Songs file {songs_file} not found")
+            logger.error("Songs file %s not found", songs_file)
             self.songs = []
         except json.JSONDecodeError as e:
-            logger.error(f"Error parsing songs file: {e}")
+            logger.error("Error parsing songs file: %s", e)
             self.songs = []
 
     def search(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
@@ -93,8 +91,6 @@ song_db = SongDatabase()
 
 def escape_html(text: str) -> str:
     """Remove HTML tags from text."""
-    import re
-
     # Remove HTML tags
     clean_text = re.sub(r"<[^>]+>", "", text)
     return clean_text
@@ -169,7 +165,7 @@ async def fiisu_command_handler(
     """Handle /fiisu command."""
     # Get the search query from command arguments
     query = " ".join(context.args) if context.args else ""
-    logger.info(f"Received /fiisu command with query: {query}")
+    logger.info("Received /fiisu command with query: %s", query)
 
     if not query.strip():
         # Check if we're in a private chat to show different help
@@ -240,7 +236,10 @@ async def fiisu_command_handler(
         await send_long_message(update, message_text)
     else:
         # If multiple results, show a list with first few lines of each
-        message_text = f"🎵 <b>Löytyi {len(matching_songs)} laulua haulle:</b> {escape_html(query)}\n\n"
+        message_text = (
+            f"🎵 <b>Löytyi {len(matching_songs)} laulua haulle:</b> "
+            f"{escape_html(query)}\n\n"
+        )
 
         for i, song in enumerate(matching_songs, 1):
             name = song.get("name", "Unknown Song")
@@ -278,7 +277,9 @@ async def fiisu_command_handler(
         await send_long_message(update, message_text)
 
 
-async def send_help_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def send_help_message(
+    update: Update, _context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """Handle /start and /help commands."""
     chat_type = update.effective_chat.type
 
@@ -314,7 +315,7 @@ async def send_help_message(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
 
 async def send_help_message_english(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
+    update: Update, _context: ContextTypes.DEFAULT_TYPE
 ) -> None:
     """Handle /english command for English instructions."""
     chat_type = update.effective_chat.type
@@ -368,7 +369,7 @@ async def handle_private_message(
 
 async def handle_error(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle errors."""
-    logger.error(f"Update {update} caused error {context.error}")
+    logger.error("Update %s caused error %s", update, context.error)
 
 
 async def post_init(application: Application):
