@@ -213,21 +213,21 @@ async def fiisu_command_handler(
         notes = song.get("notes")
 
         # Build the message with metadata
-        message_text = f"🎵 <b>{escape_html(name)}</b>\n"
+        message_text = f"🎵 <b>{name}</b>\n"
 
         # Add metadata if available
         metadata_parts = []
         if melody:
-            metadata_parts.append(f"🎼 Sävel: {escape_html(melody)}")
+            metadata_parts.append(f"🎼 Sävel: {melody}")
         if composer:
-            metadata_parts.append(f"✍️ Säveltäjä: {escape_html(composer)}")
+            metadata_parts.append(f"✍️ Säveltäjä: {composer}")
         if arranger:
-            metadata_parts.append(f"🎹 Sovittaja: {escape_html(arranger)}")
+            metadata_parts.append(f"🎹 Sovittaja: {arranger}")
 
         if metadata_parts:
             message_text += "\n" + "\n".join(metadata_parts) + "\n"
 
-        message_text += f"\n{escape_html(lyrics)}"
+        message_text += f"\n{lyrics}"
 
         # Add notes if available
         if notes:
@@ -260,17 +260,14 @@ async def fiisu_command_handler(
                 lyrics_preview = lyrics_preview[:40] + "..."
 
             # Escape HTML in name and previews
-            escaped_name = escape_html(name)
-            escaped_lyrics_preview = escape_html(lyrics_preview)
-
-            message_text += f"{i}. <b>{escaped_name}</b>\n"
+            message_text += f"{i}. <b>{name}</b>\n"
 
             # Add metadata if available
             if metadata_preview:
-                escaped_metadata = escape_html(" | ".join(metadata_preview))
+                escaped_metadata = " | ".join(metadata_preview)
                 message_text += f"   📄 <i>{escaped_metadata}</i>\n"
 
-            message_text += f"   🎵 <i>{escaped_lyrics_preview}</i>\n\n"
+            message_text += f"   🎵 <i>{lyrics_preview}</i>\n\n"
 
         message_text += "💡 Tarkenna hakua saadaksesi koko laulun!"
 
