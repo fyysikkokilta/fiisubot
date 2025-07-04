@@ -2,6 +2,11 @@ from enum import Enum
 from typing import Optional, Union, List
 from TexSoup import TexSoup
 import re
+import json
+import os
+from glob import glob
+from dataclasses import dataclass, asdict
+from tqdm import tqdm
 
 from TexSoup.data import TexNamedEnv, BraceGroup, TexCmd, TexMathModeEnv, TexNode
 
@@ -543,9 +548,6 @@ def extract_notes(content: List[TexNode]) -> List[str]:
     return notes
 
 
-from dataclasses import dataclass
-
-
 @dataclass
 class SongInfo:
     name: str
@@ -675,14 +677,26 @@ def parse_tex(content: Union[str, bytes]) -> List[SongInfo]:
         ]
 
 
-from glob import glob
-from dataclasses import asdict
-import json
-from tqdm import tqdm
-import os
-
 # WHITELIST = ("eino", "")
 WHITELIST = ("",)
+
+
+def song_contains_todo(song: SongInfo) -> bool:
+    """Check if a song contains 'TODO' in any of its fields."""
+    fields_to_check = [
+        song.name,
+        song.melody,
+        song.composer,
+        song.arranger,
+        song.lyrics,
+        song.notes,
+    ]
+
+    for field in fields_to_check:
+        if field and "TODO" in field:
+            return True
+
+    return False
 
 
 def main():
@@ -718,7 +732,9 @@ def main():
             # Process each song (main song and subsongs)
             for song in parsed_songs:
                 if song.name != "Parse Error":
-                    songs.append(asdict(song))
+                    # Filter out songs that contain TODO in any field
+                    if not song_contains_todo(song):
+                        songs.append(asdict(song))
                 else:
                     failed_files.append(pa)
                     break  # If any song failed, mark the whole file as failed
