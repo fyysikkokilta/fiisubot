@@ -525,6 +525,11 @@ def clean_final_output(text: str) -> str:
     # Remove any ampersands
     text = text.replace("&", "")
 
+    # Remove leading and trailing spaces from each line
+    lines = text.split("\n")
+    lines = [line.strip() for line in lines]
+    text = "\n".join(lines)
+
     # Ensure the text ends with exactly two newlines
     if text and not text.endswith("\n\n"):
         text += "\n\n"
