@@ -522,6 +522,9 @@ def clean_final_output(text: str) -> str:
     # Ensure there is at most two new lines in a row, considering html tags also
     text = re.sub(r"\n{3,}", "\n\n", text)
 
+    # Remove any ampersands
+    text = text.replace("&", "")
+
     # Ensure the text ends with exactly two newlines
     if text and not text.endswith("\n\n"):
         text += "\n\n"
