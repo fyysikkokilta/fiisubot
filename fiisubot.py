@@ -68,6 +68,10 @@ class SongDatabase:
             # Calculate relevance score
             score = 0
 
+            # If exact match, return immediately
+            if query_lower == song.get("name", "").lower():
+                return [song]
+
             # Higher score for name matches
             if query_lower in song.get("name", "").lower():
                 score += 10
